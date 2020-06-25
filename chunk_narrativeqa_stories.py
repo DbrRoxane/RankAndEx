@@ -6,8 +6,6 @@ from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
 import nltk
 
-CHUNK_SIZE = 1500
-NQA_DIR = "./data/processed/"
 
 def draw_chunks_stats(stories):
     nb_chunks = []
@@ -38,15 +36,15 @@ def draw_chunks_stats(stories):
 
     plt.savefig("./stat_chunks.png")
 
-def chunk_story_paragraphs(story_id, data_dir):
-    story_file = NQA_DIR + "tmp/" + story_id + ".content"
+def chunk_story_paragraphs(story_id, data_dir, chunk_size):
+    story_file = data_dir + "tmp/" + story_id + ".content"
     with open(story_file, 'r', encoding="utf-8", errors="ignore") as f:
         story_str = f.read()
         if is_html(data_dir, story_id):
             story_str = preprocess_html(story_str)
         chunks = []
         for paragraph in story_str.split("\n\n"):
-            if len(paragraph) > CHUNK_SIZE:
+            if len(paragraph) > chunk_size:
                 for smaller_paragraph in paragraph.split("\n"):
                     chunk = re.sub('\s+', ' ', smaller_paragraph).replace('\0', '')
                     chunks.append(chunk)
@@ -55,12 +53,12 @@ def chunk_story_paragraphs(story_id, data_dir):
                 chunks.append(chunk)
     return chunks
 
-def gather_paragraphs(paragraphs):
+def gather_paragraphs(paragraphs, chunk_size):
     chunks = []
     chunk = ""
     for paragraph in paragraphs:
         chunk += " " + paragraph + " "
-        if len(chunk) >= CHUNK_SIZE:
+        if len(chunk) >= chunk_size:
             chunks.append(chunk)
             chunk = ""
     chunks.append(chunk)
@@ -86,7 +84,7 @@ def is_book(data_dir, story_id):
         book = [row[2]=="gutenberg" for row in csv_reader if row[0]==story_id][0]
     return book
 
-def extract_data_entries(data_dir, gather_char_min, show_graphic=False):
+def extract_data_entries(data_dir, chunk_size, gather_char_min, show_graphic=False):
     entries = list()
     with open(data_dir+"qaps.csv", "r") as qa_file:
         csv_reader = csv.reader(qa_file, delimiter=',')
@@ -98,38 +96,42 @@ def extract_data_entries(data_dir, gather_char_min, show_graphic=False):
             answer_1, answer_2 = question_set[3], question_set[4]
             chunks = stories_chunked.get(story_id, list())
             if not chunks:
-                chunks = chunk_story_paragraphs(story_id, data_dir)
+                chunks = chunk_story_paragraphs(story_id, data_dir, chunk_size)
                 if gather_char_min:
-                    chunks = gather_paragraphs(chunks)
+                    chunks = gather_paragraphs(chunks, chunk_size)
                 stories_chunked[story_id] = chunks
             for cnt, chunk in enumerate(chunks):
                 entries.append({
-                    'question_id':"{}_q{}".format(story_id,question_idx),
-                    'passage_id':"{}_p{}".format(story_id,cnt),
+                    'question_id':"{}_q{}".format(story_id, question_idx),
+                    'passage_id':"{}_p{}".format(story_id, cnt),
                     'question':question_str,
                     'passage':"({}) - {}".format(cnt, chunk),
                     'answer1':answer_1,
                     'answer2':answer_2})
     if show_graphic:
-        show_chunks_size(stories_chunked)
+        draw_chunks_stats(stories_chunked)
     return entries
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--input_data_dir", default="data/narrativeqa",
+        "--input_data_dir", default="data/narrativeqa/",
         type=str, help="Path to retrieve initial data")
     parser.add_argument(
         "--processed_data", default="data/processed/narrativeqa_all.eval",
         type=str, help="Path to store chunked data")
+
+    parser.add_argument(
+        "--chunk_size", default=1500,
+        type=int, help="num min of character per passage")
+
     args = parser.parse_args()
 
-    print("Start processing data")
-    entries = extract_data_entries(args.input_data_dir, gather_char_min=True)
+    entries = extract_data_entries(args.input_data_dir, args.chunk_size, gather_char_min=True)
     fieldnames = entries[0].keys()
-    print("Finished processing. Now write data in {}".format(args.processed_data))
     with open(args.processed_data, "w", newline='') as writer:
         dict_writer = csv.DictWriter(writer, fieldnames=fieldnames, delimiter='\t')
         dict_writer.writerows(entries)
+    print("Finished processing, chunked stories in {}".format(args.processed_data))
 
