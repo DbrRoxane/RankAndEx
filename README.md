@@ -7,13 +7,13 @@ All the commands are launched from the main directory of this repository.
 ## Get the initial dataset
 `mkdir data`
 
-`cd data
+`cd data`
 
-git clone https://github.com/deepmind/narrativeqa.git
+`git clone https://github.com/deepmind/narrativeqa.git`
  
-cd narrativeqa
+`cd narrativeqa`
  
-./download_stories.sh `
+`./download_stories.sh `
  
 ## Passage Ranking
 
@@ -21,17 +21,13 @@ The passage ranking can be made with BERT, BM25 or TF-IDF (cosine similarity).
 The one using BERT takes more time to develop but is supposed to perform really better (see [this paper](https://arxiv.org/abs/1901.04085)).
 In any case, the first step is to chunk the stories into smaller passages.
 
-`mkdir data/processed
-
-python chunk_narrativeqa_stories.py`
+`python chunk_narrativeqa_stories.py`
 
 This script will store the chunked stories into paragraphs into `data/processed/narratativeqa_all.eval` 
 Here is a graphic to have an idea of the amount of chunks per story and their size ![alt text](https://github.com/DbrRoxane/RankAndEx/blob/master/stat_chunks.png)
 
 The results of the prediction will be in any case a .tsv file with 3 colums : the query id, the passage id and its rank
 This .tsv should be stored in `data/ranking` (`mkdir data/ranking` )
-
-
 
 ### Passage Ranking with BERT. 
 The passage ranking is made thanks to [this repository](https://github.com/nyu-dl/dl4marco-bert). 
@@ -44,14 +40,14 @@ To do it by yourself, follow the instructions bellow.
 You can chose between BERT Large and BERT base. In our case, we use BERT Large since we do not fine-tune. 
 Base model
 
-`sh dl_bert_base_msm.sh
+`sh dl_bert_base_msm.sh`
 
- unzip BERT_BASE_MSMARCO.zip -d BERT_BASE_MSMARCO`
+ `unzip BERT_BASE_MSMARCO.zip -d BERT_BASE_MSMARCO`
  
 Large model
- `sh dl_bert_large_msm.sh
+ `sh dl_bert_large_msm.sh`
  
- unzip BERT_LARGE_MSMARCO.zip -d BERT_LARGE_MSMARCO`
+ `unzip BERT_LARGE_MSMARCO.zip -d BERT_LARGE_MSMARCO`
 
 
 #### Create the input files of the Passage Ranker 
