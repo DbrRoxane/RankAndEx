@@ -185,12 +185,12 @@ def main():
         type=str, help="Path for the chunked stories")
 
     parser.add_argument(
-        "--output_file", default="./data/output/nqa_squadformat.json", \
+        "--output_file", default="./data/processed/nqa_squadformat.json", \
         type=str, help="Path for the generated dataset")
 
     parser.add_argument(
-        "--ranking_file", \
-        type=list, help="Paths of the ranking predictions files")
+        "--ranking_files", default="./data/ranking/bm25.tsv, ./data/ranking/tfidf.tsv", \
+        type=str, help="Paths of the ranking predictions files")
 
     parser.add_argument(
         "--rouge_threshold", default=0.6, \
@@ -210,8 +210,10 @@ def main():
 
     args = parser.parse_args()
 
+    ranking_files = args.ranking_files.split(", ")
+
     ranking = merge_ranks(
-        convert_rank_in_dic(args.ranking_file, args.max_rank))
+        convert_rank_in_dic(ranking_files, args.max_rank))
     print("Created rankind dic")
 
     dataset = convert_docs_in_dic(args.chunked_stories)
@@ -226,5 +228,5 @@ def main():
     else:
         convertor.find_and_convert_from_summaries(train_dev_test=args.sets)
 
- if __name__=="__main__":
+if __name__=="__main__":
      main()
