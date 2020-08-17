@@ -11,8 +11,6 @@ import sys
 from utils import convert_docs_in_dic
 
 
-BM25_FILE = "./data/output/bm25_predictions_without_answer.tsv"
-BOOK_EVAL_FILE = "./data/processed/narrativeqa_all.eval"
 
 def compute_bm25(tokenized_query, story_id, paragraphs, n):
     tokenized_paragraphs = [paragraph.split(" ") \
@@ -38,7 +36,7 @@ def gather_bm25(dataset, n, attach_answer):
     return predictions
 
 def write_bm25_pred(dataset, n, attach_answer, output_file):
-    with open(BM25_FILE, "w") as f:
+    with open(output_file, "w") as f:
         predictions = gather_bm25(dataset, n, attach_answer)
         for query_id, paragraphs in predictions.items():
             for i, p in enumerate(paragraphs):
@@ -55,10 +53,20 @@ def main():
         "--output_file", default="./data/ranking/bm25.tsv", \
         type=str, help="Path to store the bm25 ranking")
 
+    parser.add_argument(
+        "--max_rank", default=3,
+        type=int, help="Number of best rank to store")
+
+    parser.add_argument(
+        "--use_answer", default=True,
+        type=bool, help="Create oracle ranking or not")
+
     args = parser.parse_args()
 
     dataset = convert_docs_in_dic(args.chunked_stories)
-    write_bm25_pred(dataset, n=20, attach_answer=False,
+    print("Dataset loaded")
+    write_bm25_pred(dataset, n=args.max_rank,
+                    attach_answer=args.use_answer,
                     output_file=args.output_file)
 
 if __name__=="__main__":

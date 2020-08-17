@@ -19,7 +19,7 @@ FLAGS = flags.FLAGS
 
 
 flags.DEFINE_string(
-    "output_folder", "./data/ranking",
+    "output_folder", "./data/processed",
     "Folder where the tfrecord files will be written.")
 
 flags.DEFINE_string(

@@ -9,11 +9,8 @@ import sys
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from convertor import convert_docs_in_dic
+from utils import convert_docs_in_dic
 
-
-TFIDF_FILE = "./data/output/tfidf_predictions_optimized.tsv"
-BOOK_EVAL_FILE = "./data/processed/narrativeqa_all.eval"
 
 def compute_tfidf(query, story_id, paragraphs, vect_paragraphs, vectorizer, n):
     query_tfidf = vectorizer.transform([query])
@@ -63,11 +60,24 @@ def main():
         "--output_file", default="./data/ranking/bm25.tsv", \
          type=str, help="Path to store the bm25 ranking")
 
+    parser.add_argument(
+        "--max_rank", default=3,
+        type=int, help="Number of best rank to store")
+
+    parser.add_argument(
+        "--use_answer", default=True,
+        type=bool, help="Create oracle ranking or not")
+
+
     args = parser.parse_args()
 
     dataset = convert_docs_in_dic(args.chunked_stories)
+    print("Dataset loaded")
+
     vectorizer = TfidfVectorizer(tokenizer=nltk.word_tokenize, ngram_range=(1,2))
-    write_tfidf_pred(dataset, vectorizer, n=3, attach_answer=True,
+    write_tfidf_pred(dataset, vectorizer,
+                     n=args.max_rank,
+                     attach_answer=args.use_answer,
                      output_file=args.output_file)
 
 if __name__=="__main__":

@@ -7,12 +7,7 @@ import Levenshtein
 
 from utils import convert_docs_in_dic
 
-BAUER_FILE = []
-NARRATIVEQA_FILE = "./data/narrativeqa/narrativeqa_all.eval"
-MIN_PREDICTIONS = []
-OUTPUT_PRED = []
-
-def convert(dataset, input_file, output_file, bauer, n=0):
+def convert(dataset, input_file, output_file, bauer, n=0, levenshtein_threshold=5):
     tokenizer = tokenization.BasicTokenizer()
     with open(input_file, "r") as pred_file:
         pred = json.load(pred_file)
@@ -26,14 +21,13 @@ def convert(dataset, input_file, output_file, bauer, n=0):
                             "".join(tokenizer.tokenize(" ".join(example['ques']))),
                             "".join(tokenizer.tokenize(query_value['query']))
                         )
-                        if levenshtein < 5:
+                        if levenshtein < levenshtein_threshold:
                             query_id = query_key
                             generated_answer = pred.get(query_id, ["NO PREDICTION"]*(n))[n-1]
                             writer.write(generated_answer+"\n")
                             writen = True
                             break
                     if not writen:
-                        print("fuck")
                         writer.write("NO PREDICTION\n")
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
@@ -58,8 +52,13 @@ if __name__=="__main__":
         "--index_paragraphs", default=0, \
         type=str, help="If several passage size were indicated for Hard-EM run, enter the index of the best nb of parahraphs")
 
+    parser.add_argument(
+        "--levenshtein_maxdistance", default=5,
+        type=int, help="Maximum levenshtein distance between two queries since not tokenized exactly the same")
+
     args = parser.parse_args()
 
     dataset = convert_docs_in_dic(args.chunked_stories)
     convert(dataset, args.input_prediction, args.output_prediction,
-           args.bauer_file, args.index_paragraphs)
+           args.bauer_file, args.index_paragraphs,
+           args.levenshtein_maxdistance)
