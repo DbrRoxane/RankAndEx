@@ -10,6 +10,7 @@ import time
 import sys
 import tokenization
 
+import similarity_metrics as metrics
 from utils import *
 
 class Convertor(object):
@@ -123,56 +124,55 @@ class MinConvertor(Convertor):
                 return i, i+size_ngram-1
         return None, None
 
-    def find_likely_answer(self, paragraph, answer1, answer2, max_n=20):
+    def find_likely_answer(self, paragraph, answer1, answer2, max_n=20, 
+                           metrics=[metrics.Rouge, metrics.Bleu]):
         """
         Knowing an answer, find spans in the paragraphs with high rouge score
         max_n is the biggest n-gram analyzed
         """
-
-        previous_max_score, max_score = 0, 0
-        masked_paragraph = paragraph.copy()
-        subtext = paragraph.copy()
-        rouge = rouge_score.Rouge()
-        max_n = min(max_n, len(paragraph))
         answers = []
-        i = max_n
-        while i > 0:
-            n_grams = [" ".join(n_gram) for n_gram in nltk.ngrams(subtext, i)]
-            scores = [score['rouge-l']['f']
-                      for score in rouge.get_scores(n_grams, [answer1]*len(n_grams))]
-            scores += [score['rouge-l']['f']
-                       for score in rouge.get_scores(n_grams, [answer2]*len(n_grams))]
-            max_index_score = np.argmax(np.array(scores))
-            max_score = scores[max_index_score]
+        for metric in metrics:
+            previous_max_score, max_score = 0, 0
+            masked_paragraph = paragraph.copy()
+            subtext = paragraph.copy()
+            max_n = min(max_n, len(paragraph))
+            i = max_n
+            metric_class = metric()
 
-            #if the previous score was better than the actual, 
-            #it means that we have a better span and no need to fo further
-            #or if max_score=0, we know there is nothing interesting here
-            if previous_max_score > max_score or max_score == 0:
-                if previous_max_score < self.rouge_threshold or max_score == 0:
-                    break
+            while i > 0:
+                n_grams = nltk.ngrams(subtext, i)
+                scores = metric_class.compute_score(n_grams, answer1, answer2)
+                max_index_score = np.argmax(np.array(scores))
+                max_score = scores[max_index_score]
+
+                #if the previous score was better than the actual, 
+                #it means that we have a better span and no need to fo further
+                #or if max_score=0, we know there is nothing interesting here
+                if previous_max_score > max_score or max_score == 0:
+                    if previous_max_score < self.rouge_threshold or max_score == 0:
+                        break
+                    index_start, index_end = self.match_first_span(masked_paragraph, subtext)
+                    if not index_start and not index_end:
+                        break
+                    answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
+
+                    #once we find a good answer, we remove it from the initial paragraph
+                    #and rerun the exploration
+                    previous_max_score = 0
+                    i = max_n
+                    for j in range(index_start, index_end+1):
+                        masked_paragraph[j] = "MASK"
+                    subtext = masked_paragraph.copy()
+                else:
+                    subtext = self.tokenizer.tokenize(n_grams[max_index_score % len(n_grams)])
+                    previous_max_score = max_score
+                    i -= 1
+
+            if max_score >= self.rouge_threshold:
                 index_start, index_end = self.match_first_span(masked_paragraph, subtext)
-                if not index_start and not index_end:
-                    break
-                answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
-
-                #once we find a good answer, we remove it from the initial paragraph
-                #and rerun the exploration
-                previous_max_score = 0
-                i = max_n
-                for j in range(index_start, index_end+1):
-                    masked_paragraph[j] = "MASK"
-                subtext = masked_paragraph.copy()
-            else:
-                subtext = self.tokenizer.tokenize(n_grams[max_index_score % len(n_grams)])
-                previous_max_score = max_score
-                i -= 1
-
-        if max_score >= self.rouge_threshold:
-            index_start, index_end = self.match_first_span(masked_paragraph, subtext)
-            if index_start:
-                answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
-
+                if index_start:
+                    answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
+        print(answers)
         return answers
 
 
@@ -214,7 +214,7 @@ def main():
 
     ranking = merge_ranks(
         convert_rank_in_dic(ranking_files, args.max_rank))
-    print("Created rankind dic")
+    print("Created ranking dic")
 
     dataset = convert_docs_in_dic(args.chunked_stories)
     print("Created dataset")
