@@ -10,7 +10,7 @@ import time
 import sys
 import tokenization
 
-import similarity_metrics as metrics
+from similarity_metrics import Rouge, Bleu
 from utils import *
 
 class Convertor(object):
@@ -86,10 +86,16 @@ class Convertor(object):
 
 
 class MinConvertor(Convertor):
-    def __init__(self, converted_filename, dataset, ranking_dic=None, rouge_threshold=0.5):
+    def __init__(self, converted_filename, dataset, ranking_dic=None,
+                 metrics=(Rouge, Bleu),
+                 metrics_thresholds=(0.6, 0.5)):
 
-        super().__init__(converted_filename, dataset, ranking_dic)
-        self.rouge_threshold = rouge_threshold
+        Convertor.__init__(MinConvertor,
+                           converted_filename, dataset, ranking_dic)
+
+        assert len(metrics) == len(metrics_thresholds)
+        self.metrics = metrics
+        self.metrics_thresholds = metrics_thresholds
 
     def open_file(self):
         return jsonlines.open(self.converted_filename, mode="w")
@@ -124,14 +130,13 @@ class MinConvertor(Convertor):
                 return i, i+size_ngram-1
         return None, None
 
-    def find_likely_answer(self, paragraph, answer1, answer2, max_n=20, 
-                           metrics=[metrics.Rouge, metrics.Bleu]):
+    def find_likely_answer(self, paragraph, answer1, answer2, max_n=20):
         """
         Knowing an answer, find spans in the paragraphs with high rouge score
         max_n is the biggest n-gram analyzed
         """
         answers = []
-        for metric in metrics:
+        for metric, threshold in zip(self.metrics, self.metrics_thresholds):
             previous_max_score, max_score = 0, 0
             masked_paragraph = paragraph.copy()
             subtext = paragraph.copy()
@@ -140,8 +145,10 @@ class MinConvertor(Convertor):
             metric_class = metric()
 
             while i > 0:
-                n_grams = nltk.ngrams(subtext, i)
-                scores = metric_class.compute_score(n_grams, answer1, answer2)
+                n_grams_split = list(nltk.ngrams(subtext, i))
+                n_grams = [" ".join(ngram) for ngram in n_grams_split]
+
+                scores = metric_class.compute_score(n_grams_split, answer1, answer2)
                 max_index_score = np.argmax(np.array(scores))
                 max_score = scores[max_index_score]
 
@@ -149,11 +156,13 @@ class MinConvertor(Convertor):
                 #it means that we have a better span and no need to fo further
                 #or if max_score=0, we know there is nothing interesting here
                 if previous_max_score > max_score or max_score == 0:
-                    if previous_max_score < self.rouge_threshold or max_score == 0:
+                    if previous_max_score < threshold or max_score == 0:
                         break
                     index_start, index_end = self.match_first_span(masked_paragraph, subtext)
                     if not index_start and not index_end:
                         break
+                    #already_start = [True for answer in answers if index_start in answer['word_start']]
+                    #already_end = [True for answer in answers if index_end in answer['word_end']]
                     answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
 
                     #once we find a good answer, we remove it from the initial paragraph
@@ -164,14 +173,16 @@ class MinConvertor(Convertor):
                         masked_paragraph[j] = "MASK"
                     subtext = masked_paragraph.copy()
                 else:
-                    subtext = self.tokenizer.tokenize(n_grams[max_index_score % len(n_grams)])
+                    subtext = self.tokenizer.tokenize(n_grams[max_index_score])
                     previous_max_score = max_score
                     i -= 1
 
-            if max_score >= self.rouge_threshold:
+            if max_score >= threshold:
                 index_start, index_end = self.match_first_span(masked_paragraph, subtext)
                 if index_start:
                     answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
+        ##remove duplicates
+        answers = [dict(t) for t in {tuple(d.items()) for d in answers}]
         print(answers)
         return answers
 
@@ -192,9 +203,14 @@ def main():
         "--ranking_files", default="./data/ranking/bm25.tsv, ./data/ranking/tfidf.tsv", \
         type=str, help="Paths of the ranking predictions files")
 
+#    parser.add_argument(
+#        "--metrics", default="Rouge,Bleu", \
+#        type=str, help="Metrics for weak labelisation")
+
+
     parser.add_argument(
-        "--rouge_threshold", default=0.6, \
-        type=float, help="Rouge score threshold")
+        "--thresholds", default="0.6,0.5", \
+        type=str, help="Weak labelisation threshold")
 
     parser.add_argument(
         "--summary", default=False, \
@@ -210,6 +226,9 @@ def main():
 
     args = parser.parse_args()
 
+    metrics=[Rouge, Bleu]
+    thresholds=[eval(t) for t in args.thresholds.split(",")]
+
     ranking_files = args.ranking_files.split(", ")
 
     ranking = merge_ranks(
@@ -222,7 +241,9 @@ def main():
     convertor = MinConvertor(args.output_file,
                              dataset,
                              ranking,
-                             args.rouge_threshold)
+                             metrics,
+                             thresholds
+                             )
     if not args.summary:
         convertor.find_and_convert(just_book=False, train_dev_test=args.sets)
     else:
