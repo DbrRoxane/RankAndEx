@@ -10,7 +10,7 @@ import time
 import sys
 import tokenization
 
-from similarity_metrics import Rouge, Bleu
+from similarity_metrics import Rouge, Bleu, Cosine
 from utils import *
 
 class Convertor(object):
@@ -161,8 +161,6 @@ class MinConvertor(Convertor):
                     index_start, index_end = self.match_first_span(masked_paragraph, subtext)
                     if not index_start and not index_end:
                         break
-                    #already_start = [True for answer in answers if index_start in answer['word_start']]
-                    #already_end = [True for answer in answers if index_end in answer['word_end']]
                     answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
 
                     #once we find a good answer, we remove it from the initial paragraph
@@ -183,7 +181,6 @@ class MinConvertor(Convertor):
                     answers.append({'text':" ".join(subtext), 'word_start':index_start, 'word_end':index_end})
         ##remove duplicates
         answers = [dict(t) for t in {tuple(d.items()) for d in answers}]
-        print(answers)
         return answers
 
 
@@ -192,7 +189,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--chunked_stories", default="./data/processed/narrativeqa_all.eval", \
+        "--chunked_stories", default="./data/narrativeqa_all.eval", \
         type=str, help="Path for the chunked stories")
 
     parser.add_argument(
@@ -209,7 +206,7 @@ def main():
 
 
     parser.add_argument(
-        "--thresholds", default="0.6,0.5", \
+        "--thresholds", default="0.6,0.5,0.7", \
         type=str, help="Weak labelisation threshold")
 
     parser.add_argument(
@@ -226,8 +223,8 @@ def main():
 
     args = parser.parse_args()
 
-    metrics=[Rouge, Bleu]
-    thresholds=[eval(t) for t in args.thresholds.split(",")]
+    metrics = [Rouge, Bleu, Cosine]
+    thresholds = [eval(t) for t in args.thresholds.split(",")]
 
     ranking_files = args.ranking_files.split(", ")
 

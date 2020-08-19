@@ -48,7 +48,7 @@ class Bleu(Metric):
         return scores
 
 class Cosine(Metric):
-    def __init__(self, max_n):
+    def __init__(self):
         Metric.__init__(Cosine)
         self.vectorizer = TfidfVectorizer(tokenizer=nltk.word_tokenize)
 
