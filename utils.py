@@ -80,8 +80,12 @@ def merge_ranks(ranking_dic):
     for query_id, ranks in ranking_dic.items():
         merged_list = [par for groupped_rank in zip(*list(ranks.values()))
                        for par in groupped_rank]
-        merged_list = list(set(merged_list))
-        rank_merged[query_id] = merged_list
+        set_merged_list  = []
+        for elmt in merged_list:
+            if elmt not in set_merged_list:
+                set_merged_list.append(elmt)
+        #merged_list = list(set(merged_list))
+        rank_merged[query_id] = set_merged_list
     return rank_merged
 
 
