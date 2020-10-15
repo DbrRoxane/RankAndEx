@@ -7,7 +7,7 @@ import Levenshtein
 
 from utils import convert_docs_in_dic
 
-def convert(dataset, input_file, output_file, bauer, n=0, levenshtein_threshold=5):
+def convert(dataset, input_file, output_file, bauer, n=1, levenshtein_threshold=5):
     tokenizer = tokenization.BasicTokenizer()
     with open(input_file, "r") as pred_file:
         pred = json.load(pred_file)
@@ -33,7 +33,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--chunked_stories", default="./data/processed/narrativeqa_all.eval", \
+        "--chunked_stories", default="./data/narrativeqa_all.eval", \
         type=str, help="Path for the chunked stories")
 
     parser.add_argument(
@@ -49,7 +49,7 @@ if __name__=="__main__":
         type=str, help="Path for the data downloaded from Commonsense Multi-Hop repository")
 
     parser.add_argument(
-        "--index_paragraphs", default=0, \
+        "--index_paragraphs", default=1, \
         type=str, help="If several passage size were indicated for Hard-EM run, enter the index of the best nb of parahraphs")
 
     parser.add_argument(
