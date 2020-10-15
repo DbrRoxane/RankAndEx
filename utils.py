@@ -19,6 +19,30 @@ tokenizer = tokenization.BasicTokenizer()
 def process_str(text):
     return " ".join(tokenizer.tokenize(text))
 
+def split_paragraph(paragraph, n_split):
+    size_cont = len(paragraph)
+    split_context = []
+    step = size_cont // n_split
+    start = 0
+    for i in range(n_split-1):
+        end_theory = start + step
+        if "." in paragraph[end_theory:end_theory+step]:
+            end = paragraph.index(".", end_theory, end_theory+step) + 1 #+1 to end after .
+        elif " " in paragraph[end_theory:end_theory+step]:
+            end = paragraph.index(" ", end_theory, end_theory+step) + 1
+            print("token cut", paragraph[end_theory:end_theory+step])
+        else:
+            end = end_theory
+            print("hard cut", paragraph[end_theory:end_theory+step])
+        split_context.append(paragraph[start:end])
+        start = end
+    end = size_cont - 1
+    split_context.append(paragraph[start:end])
+    return split_context
+
+
+
+
 
 def retrieve_doc_info(story_id):
     with open(DOCUMENTS_FILE, "r") as f:
@@ -76,6 +100,7 @@ def convert_rank_in_dic(ranking_files, max_rank=3):
     return ranking_dic
 
 def merge_ranks(ranking_dic):
+    ok, notok = 0,0
     rank_merged = dict()
     for query_id, ranks in ranking_dic.items():
         merged_list = [par for groupped_rank in zip(*list(ranks.values()))
@@ -83,9 +108,17 @@ def merge_ranks(ranking_dic):
         set_merged_list  = []
         for elmt in merged_list:
             if elmt not in set_merged_list:
-                set_merged_list.append(elmt)
+                if elmt.split("_")[0]==query_id.split("_")[0]:
+                    set_merged_list.append(elmt)
+                    ok +=1
+                else:
+                    notok += 1
+
         #merged_list = list(set(merged_list))
         rank_merged[query_id] = set_merged_list
+        #print("test2", query_id.split("_")[0],set_merged_list[0].split("_")[0])
+        #assert(query_id.split("_")[0]==set_merged_list[0].split("_")[0])
+    print(ok, notok)
     return rank_merged
 
 

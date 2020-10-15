@@ -24,7 +24,7 @@ class Convertor(object):
         self.ranking_dic = ranking_dic
         self.tokenizer = tokenization.BasicTokenizer()
 
-    def find_and_convert(self, just_book, train_dev_test):
+    def find_and_convert(self, just_book, train_dev_test, with_answer, n_split=2):
         """
         Retrieve the n best paragraphs in a story based on a question
         """
@@ -35,7 +35,7 @@ class Convertor(object):
             select_book = self.dataset[story_id]['kind'] == 'gutenberg' if \
                     just_book else True
             select_set = self.dataset[story_id]['set'] == train_dev_test
-            if select_book and select_set:
+            if select_book and select_set and paragraphs_ids != []:
                 context, query, answer1, answer2 = self.extract_query_details(
                     story_id, query_id, paragraphs_ids)
                 entry = {'query_id':query_id,
@@ -45,10 +45,10 @@ class Convertor(object):
                          'context':context,
                          'answer1':answer1,
                          'answer2':answer2}
-                self.write_to_converted_file(converted_file, entry)
+                self.write_to_converted_file(converted_file, entry, with_answer=with_answer, n_split=n_split)
         self.close_file(converted_file)
 
-    def find_and_convert_from_summaries(self, train_dev_test):
+    def find_and_convert_from_summaries(self, train_dev_test, with_answer, n_split=3):
         converted_file = self.open_file()
         for story_id, story_details in self.dataset.items():
             if story_details['set'] == train_dev_test:
@@ -60,7 +60,7 @@ class Convertor(object):
                              'answer1':query_details['answer1'],
                              'answer2':query_details['answer2']
                             }
-                    self.write_to_converted_file(converted_file, entry)
+                    self.write_to_converted_file(converted_file, entry, with_answer=with_answer, n_split=n_split)
         self.close_file(converted_file)
 
     def open_file(self):
@@ -69,18 +69,20 @@ class Convertor(object):
     def close_file(self, converted_file):
         pass
 
-    def write_to_converted_file(self, converted_file, entry):
+    def write_to_converted_file(self, converted_file, entry, with_answer, n_split):
         pass
 
     def extract_query_details(self, story_id, query_id, paragraphs_id):
         context = ""
         for p_id in paragraphs_id:
+            assert(story_id==p_id.split("_")[0])
             p_str = self.dataset[story_id]['paragraphs'].get(p_id, "")
             context += p_str + "\n" if p_str != "" else p_str
             if p_str == "":
                 print("Cannot retrieve paragraph {}".format(p_id))
                 print("All the p_id are {} \n \n".
                       format(self.dataset[story_id]['paragraphs'].keys()))
+        context = "empty" if context=="" else context
         query, answer1, answer2 = self.dataset[story_id]['queries'][query_id].values()
         return context, query, answer1, answer2
 
@@ -100,17 +102,25 @@ class MinConvertor(Convertor):
     def open_file(self):
         return jsonlines.open(self.converted_filename, mode="w")
 
-    def write_to_converted_file(self, converted_file, entry):
+    def write_to_converted_file(self, converted_file, entry, with_answer, n_split=2):
         paragraphs = entry['context'].split("\n")
-        paragraphs_tokenized = [self.tokenizer.tokenize(paragraph.replace('.', ''))
-                                for paragraph in paragraphs]
-        answers = [self.find_likely_answer(p_tokenized,
+        paragraphs_split = []
+        for paragraph in paragraphs:
+            paragraphs_split.extend(split_paragraph(paragraph, n_split))
+        paragraphs_split = [p for p in paragraphs_split if p != []]
+        paragraphs_tokenized = [self.tokenizer.tokenize(paragraph)
+                                for paragraph in paragraphs_split]
+        if with_answer:
+            answers = [self.find_likely_answer(p_tokenized,
                                            entry['answer1'],
                                            entry['answer2']) \
                    for p_tokenized in paragraphs_tokenized]
-        final_answers = [answer['text'] for paragraph in answers
+            final_answers = [answer['text'] for paragraph in answers
                          for answer in paragraph if answer != []]
-        final_answers =  [entry['answer1'], entry['answer2']] + final_answers
+            final_answers =  [entry['answer1'], entry['answer2']] + final_answers
+        else:
+            answers = [[] for p_tokenized in paragraphs_tokenized]
+            final_answers =  [entry['answer1'], entry['answer2']] 
         converted_file.write({'id'       : entry['query_id'],
                               'question' : entry['query'],
                               'context'  : paragraphs_tokenized,
@@ -147,7 +157,6 @@ class MinConvertor(Convertor):
             while i > 0:
                 n_grams_split = list(nltk.ngrams(subtext, i))
                 n_grams = [" ".join(ngram) for ngram in n_grams_split]
-
                 scores = metric_class.compute_score(n_grams_split, answer1, answer2)
                 max_index_score = np.argmax(np.array(scores))
                 max_score = scores[max_index_score]
@@ -197,7 +206,7 @@ def main():
         type=str, help="Path for the generated dataset")
 
     parser.add_argument(
-        "--ranking_files", default="./data/ranking/bm25.tsv, ./data/ranking/tfidf.tsv", \
+        "--ranking_files", default="./data/ranking/bm25_with_answer.tsv, ./data/ranking/tfidf_with_answer.tsv, ./data/ranking/nqa_predictions_with_answer0.tsv, ./data/ranking/nqa_predictions_with_answer1.tsv, ./data/ranking/nqa_predictions_with_answer2.tsv, ./data/ranking/nqa_predictions_with_answer3.tsv, ./data/ranking/nqa_predictions_with_answer4.tsv, ./data/ranking/nqa_predictions_with_answer5.tsv, ./data/ranking/nqa_predictions_with_answer6.tsv, ./data/ranking/nqa_predictions_with_answer7.tsv, ./data/ranking/nqa_predictions_with_answer8.tsv", \
         type=str, help="Paths of the ranking predictions files")
 
 #    parser.add_argument(
@@ -219,14 +228,26 @@ def main():
 
     parser.add_argument(
         "--max_rank", default=20, \
-        type=str, help="how many paragraph to use")
+        type=int, help="how many paragraph to use")
+
+    parser.add_argument(
+        "--n_split", default=2, \
+        type=int, help="in how many piece chunk the text")
+ 
+    parser.add_argument(
+        "--with_answer", default=True,
+        type=bool, help="whether or not add weak label as final answer")
 
     args = parser.parse_args()
+
+    print(args.summary)
+    print(args.max_rank)
 
     metrics = [Rouge, Bleu, Cosine]
     thresholds = [eval(t) for t in args.thresholds.split(",")]
 
     ranking_files = args.ranking_files.split(", ")
+    print(ranking_files)
 
     ranking = merge_ranks(
         convert_rank_in_dic(ranking_files, args.max_rank))
@@ -242,9 +263,14 @@ def main():
                              thresholds
                              )
     if not args.summary:
-        convertor.find_and_convert(just_book=False, train_dev_test=args.sets)
+        convertor.find_and_convert(just_book=False,
+                                   train_dev_test=args.sets, 
+                                   with_answer=args.with_answer,
+                                   n_split=args.n_split)
     else:
-        convertor.find_and_convert_from_summaries(train_dev_test=args.sets)
+        convertor.find_and_convert_from_summaries(train_dev_test=args.sets,
+                                                  with_answer=args.with_answer, 
+                                                  n_split=args.n_split)
 
 if __name__=="__main__":
      main()
