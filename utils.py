@@ -38,10 +38,11 @@ def split_paragraph(paragraph, n_split):
         start = end
     end = size_cont - 1
     split_context.append(paragraph[start:end])
+    split_context = [split_c for split_c in split_context if split_c.strip() != ""]
+    if split_context == []:
+        split_context = ["no paragraph retrieved"]
+        print("no paragraph retrieved")
     return split_context
-
-
-
 
 
 def retrieve_doc_info(story_id):
@@ -93,7 +94,8 @@ def convert_rank_in_dic(ranking_files, max_rank=3):
             for row in ranking_reader:
                 if row[0] not in ranking_dic.keys():
                     ranking_dic[row[0]] = {}
-                if ranking_filename not in ranking_dic[row[0]].keys():
+                if ranking_filename not in ranking_dic[row[0]].keys() and \
+                   ranking_filename.split("_")[0] == row[0].split("_")[0]:
                     ranking_dic[row[0]][ranking_filename] = []
                 if eval(row[2]) < max_rank:
                     ranking_dic[row[0]][ranking_filename].append(row[1])
@@ -103,6 +105,8 @@ def merge_ranks(ranking_dic):
     ok, notok = 0,0
     rank_merged = dict()
     for query_id, ranks in ranking_dic.items():
+        if len(ranks.keys())!=2:
+            print("caca", ranks.keys())
         merged_list = [par for groupped_rank in zip(*list(ranks.values()))
                        for par in groupped_rank]
         set_merged_list  = []
@@ -113,11 +117,7 @@ def merge_ranks(ranking_dic):
                     ok +=1
                 else:
                     notok += 1
-
-        #merged_list = list(set(merged_list))
         rank_merged[query_id] = set_merged_list
-        #print("test2", query_id.split("_")[0],set_merged_list[0].split("_")[0])
-        #assert(query_id.split("_")[0]==set_merged_list[0].split("_")[0])
     print(ok, notok)
     return rank_merged
 

@@ -10,7 +10,7 @@ import re
 import tensorflow as tf
 import time
 # local module
-import tokenization
+import tokenization_msmarco as tokenization
 
 
 flags = tf.flags
@@ -28,7 +28,7 @@ flags.DEFINE_string(
     "The vocabulary file that the BERT model was trained on.")
 flags.DEFINE_string(
     "eval_dataset_path",
-    "./data/processed/narrativeqa_all.eval",
+    "./data/narrativeqa_all.eval",
     "Path to the MSMARCO eval dataset containing the tab separated "
     "<query, positive_paragraph, negative_paragraph> tuples.")
 flags.DEFINE_integer(
@@ -104,43 +104,46 @@ def convert_eval_dataset(set_name, tokenizer, use_answer):
     dataset_path = FLAGS.eval_dataset_path
 
   split_dataset = []
-  queries_docs = collections.defaultdict(list)
-  query_ids = {}
+  sumi = 0
+  queries_docs = {} #collections.defaultdict(list)
+#  query_ids = {}
   with open(dataset_path, 'r') as f:
     for i, line in enumerate(f):
       if i % FLAGS.num_examples_per_tf == 0 and i > 0:
         processed_dataset = queries_docs.copy()
-        queries_docs = collections.defaultdict(list)
-        queries_docs[query] = processed_dataset[query].copy()
-        del processed_dataset[query]
+        queries_docs = {} #collections.defaultdict(list)
+        queries_docs[query_id] = processed_dataset[query_id].copy()
+        del processed_dataset[query_id]
         split_dataset.append(processed_dataset)
+        sumi+=len(processed_dataset.keys())
         print("{} checkpoint, save {} queries ".format(i, len(processed_dataset.items())))
       query_id, doc_id, query, doc, a1, a2 = line.strip().split('\t')
+      assert(query_id.split("_")[0] == doc_id.split("_")[0])
       if use_answer:
         query += " " + a1 +" "+ a2
       label = 0
       if set_name == 'dev':
         if '\t'.join([query_id, doc_id]) in relevant_pairs:
           label = 1
-      queries_docs[query].append((doc_id, doc, label))
-      query_ids[query] = query_id
-  processed_dataset = queries_docs.copy()
-  queries_docs = collections.defaultdict(list)
-  queries_docs[query] = processed_dataset[query].copy()
-  del processed_dataset[query]
-  split_dataset.append(processed_dataset)
+      if query_id not in queries_docs.keys():
+        queries_docs[query_id] = {'query':query, 'docs':[(doc_id, doc, label)]}
+      else:
+        queries_docs[query_id]['docs'].append((doc_id, doc, label))
+    split_dataset.append(queries_docs)
+    sumi+=len(queries_docs.keys())
+    print(sumi)
 
-  for j, queries_docs in enumerate(split_dataset):
+  for j, qd in enumerate(split_dataset):
   # Add fake paragraphs to the queries that have less than FLAGS.num_eval_docs.
-    queries = list(queries_docs.keys())  # Need to copy keys before iterating.
-    for query in queries:
-      docs = queries_docs[query]
+    queries = list(qd.keys())  # Need to copy keys before iterating.
+    for query_id in queries:
+      docs = qd[query_id]['docs']
       docs += max(
         0, FLAGS.num_eval_docs - len(docs)) * [('00000000', 'FAKE DOCUMENT', 0)]
-      queries_docs[query] = docs[:FLAGS.num_eval_docs]
-    assert len(
-        set(len(docs) == FLAGS.num_eval_docs for docs in queries_docs.values())) == 1, (
-            'Not all queries have {} docs'.format(FLAGS.num_eval_docs))
+      qd[query_id]['docs'] = docs[:FLAGS.num_eval_docs]
+    #assert len(
+    #    set(len(docs) == FLAGS.num_eval_docs for docs in qd[query_id]['docs'])) == 1, (
+    #        'Not all queries have {} docs'.format(FLAGS.num_eval_docs))
 
     writer = tf.python_io.TFRecordWriter(
       FLAGS.output_folder + '/dataset_' + set_name + str(j) + '.tf')
@@ -148,10 +151,10 @@ def convert_eval_dataset(set_name, tokenizer, use_answer):
     query_doc_ids_path = (
       FLAGS.output_folder + '/query_doc_ids_' + set_name + str(j) + '.txt')
     with open(query_doc_ids_path, 'w') as ids_file:
-      for i, (query, doc_ids_docs) in enumerate(queries_docs.items()):
+      for i, (query_id, infos) in enumerate(qd.items()):
+        doc_ids_docs = infos['docs']
         doc_ids, docs, labels = zip(*doc_ids_docs)
-        query_id = query_ids[query]
-
+        query = infos['query']
         write_to_tf_record(writer=writer,
                          tokenizer=tokenizer,
                          query=query,
@@ -163,10 +166,10 @@ def convert_eval_dataset(set_name, tokenizer, use_answer):
 
         if i % 1000 == 0:
           print('Writing {} set, query {} of {}'.format(
-            set_name, i, len(queries_docs)))
+            set_name, i, len(qd)))
           time_passed = time.time() - start_time
           hours_remaining = (
-            len(queries_docs) - i) * time_passed / (max(1.0, i) * 3600)
+            len(qd) - i) * time_passed / (max(1.0, i) * 3600)
           print('Estimated hours remaining to write the {} set: {}'.format(
             set_name, hours_remaining))
     writer.close()
