@@ -104,9 +104,10 @@ class MinConvertor(Convertor):
 
     def write_to_converted_file(self, converted_file, entry, with_answer, n_split=2):
         paragraphs = entry['context'].split("\n")
+        paragraphs = [p for p in paragraphs if p.strip()]
         paragraphs_split = []
         for paragraph in paragraphs:
-            paragraphs_split.extend(split_paragraph(paragraph.strip(), n_split))
+            paragraphs_split.extend(split_paragraph(paragraph, n_split))
         paragraphs_split = [p for p in paragraphs_split if p != []]
         paragraphs_tokenized = [self.tokenizer.tokenize(paragraph)
                                 for paragraph in paragraphs_split]
@@ -242,6 +243,7 @@ def main():
     args = parser.parse_args()
 
     print(args.with_answer)
+    print(args.summary)
     print(args.max_rank)
 
     metrics = [Rouge, Bleu, Cosine]

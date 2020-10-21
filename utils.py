@@ -20,6 +20,7 @@ def process_str(text):
     return " ".join(tokenizer.tokenize(text))
 
 def split_paragraph(paragraph, n_split):
+    assert(len(paragraph.strip())>0)
     size_cont = len(paragraph)
     split_context = []
     step = size_cont // n_split
