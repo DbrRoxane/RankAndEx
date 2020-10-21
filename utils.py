@@ -27,14 +27,18 @@ def split_paragraph(paragraph, n_split):
     start = 0
     for i in range(n_split-1):
         end_theory = start + step
-        if "." in paragraph[end_theory:end_theory+step] or \
-           "?" in paragraph[end_theory:end_theory+step] or \
-           "!" in paragraph[end_theory:end_theory+step]:
+        if "." in paragraph[end_theory:end_theory+step]:
             end = paragraph.index(".", end_theory, end_theory+step) + 1 #+1 to end after .
+        elif "!" in paragraph[end_theory:end_theory+step]:
+            end = paragraph.index("!", end_theory, end_theory+step) + 1 #+1 to end after .
+        elif "?" in paragraph[end_theory:end_theory+step]:
+            end = paragraph.index("?", end_theory, end_theory+step) + 1 #+1 to end after .
+        elif "-" in paragraph[end_theory:end_theory+step]:
+            end = paragraph.index("-", end_theory, end_theory+step) + 1 #+1 to end after .
         elif ";" in paragraph[end_theory:end_theory+step]:
-            end = paragraph.index(" ", end_theory, end_theory+step) + 1
+            end = paragraph.index(";", end_theory, end_theory+step) + 1
         elif "," in paragraph[end_theory:end_theory+step]:
-            end = paragraph.index(" ", end_theory, end_theory+step) + 1
+            end = paragraph.index(",", end_theory, end_theory+step) + 1
             print("coma cut", paragraph[end_theory:end_theory+step])
         elif " " in paragraph[end_theory:end_theory+step]:
             end = paragraph.index(" ", end_theory, end_theory+step) + 1
