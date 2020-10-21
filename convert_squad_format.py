@@ -106,7 +106,7 @@ class MinConvertor(Convertor):
         paragraphs = entry['context'].split("\n")
         paragraphs_split = []
         for paragraph in paragraphs:
-            paragraphs_split.extend(split_paragraph(paragraph, n_split))
+            paragraphs_split.extend(split_paragraph(paragraph.strip(), n_split))
         paragraphs_split = [p for p in paragraphs_split if p != []]
         paragraphs_tokenized = [self.tokenizer.tokenize(paragraph)
                                 for paragraph in paragraphs_split]
@@ -235,12 +235,13 @@ def main():
         type=int, help="in how many piece chunk the text")
  
     parser.add_argument(
-        "--with_answer", default=True,
-        type=bool, help="whether or not add weak label as final answer")
+        "--with_answer", default=False,
+        type=lambda x: (str(x).lower() in ['true']),
+        help="whether or not add weak label as final answer")
 
     args = parser.parse_args()
 
-    print(args.summary)
+    print(args.with_answer)
     print(args.max_rank)
 
     metrics = [Rouge, Bleu, Cosine]
