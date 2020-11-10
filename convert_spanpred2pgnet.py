@@ -31,7 +31,7 @@ def convert2coqa(input_file, output_file, id_answer=0):
         good, bad = 0,0
         for obj in reader:
             context = " ".join([word for cont in obj["context"] for word in cont ])
-            one_story = {"source": "narrative_qa",
+            one_story = {"source": "mctest",
                          "id" : obj["id"],
                          "name": "narrative_qa",
                          "filename" : obj["id"], #.split("_")[0],
@@ -44,6 +44,7 @@ def convert2coqa(input_file, output_file, id_answer=0):
                         }
             #size_context = [len(para) for para in obj["context"]]
             answers = []
+            add_answers = []
             final_answer = obj["final_answers"]
             for i, para in enumerate(obj["answers"]):
                 if len(para) > 0 : 
@@ -58,11 +59,17 @@ def convert2coqa(input_file, output_file, id_answer=0):
                     #span_start = size_context[i] + answer["word_start"]
                     #span_end = size_context[i] + answer["word_end"]
                     answers.append({"span_text":answer["text"],
-                                    "input_text":final_answer[id_answer],
+                                    "input_text":final_answer[0],
                                     "span_start":span_start,
                                     "span_end":span_end,
                                     "turn_id" :1 # eval(obj["id"].split("_")[1][1:])
                                    })
+                    add_answers.append({"span_text":answer["text"],
+                                        "input_text":final_answer[1],
+                                         "span_start":span_start,
+                                         "span_end":span_end,
+                                         "turn_id" :1
+                                        })
                     break
             if len(answers) == 0:
                 answers.append({"span_text": "unknown",
@@ -71,8 +78,16 @@ def convert2coqa(input_file, output_file, id_answer=0):
                                 "span_end":-1,
                                 "turn_id" : 1 #eval(obj["id"].split("_")[1][1:])
                                })
+                add_answers.append({"span_text": "unknown",
+                                    "input_text":"unknown",
+                                    "span_start":-1,
+                                    "span_end":-1,
+                                    "turn_id" : 1 #eval(obj["id"].split("_")[1][1:])
+                                   })
+
             assert len(answers)==1
             one_story["answers"] = answers
+            one_story["additional_answers"] = {"0" :add_answers}
             output_data["data"].append(one_story)
     print(good, bad)
     with open(output_file, "w") as writer:
@@ -82,8 +97,8 @@ def convert2coqa(input_file, output_file, id_answer=0):
 #convert2pgnet("./data/squad_format/rbc_sum_train_point_split3.json", "./data/pgnet_format/min_train_weaklabel", train=True)
 #convert2pgnet("./data/squad_format/rbc_sum_dev_point_split3.json", "./data/pgnet_format/min_dev_weaklabel", train=True)
 
-convert2coqa("./data/squad_format/min_train.jsonl", "./data/coqa_format/rbc_sum_train_coqa_format.json", 0)
-convert2coqa("./data/squad_format/min_dev.jsonl", "./data/coqa_format/rbc_sum_dev_coqa_format.json", 0)
+convert2coqa("./data/squad_format/rbc_sum_train_point_split3.json", "./data/coqa_format/rbc_sum_train_coqa_format.json", 0)
+convert2coqa("./data/squad_format//rbc_sum_dev_point_split3.json", "./data/coqa_format/rbc_sum_dev_coqa_format.json", 0)
 #ensuite sur sum avec prediction
 
 # ensuite sur story weak label
