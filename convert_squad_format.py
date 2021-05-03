@@ -141,11 +141,12 @@ class MinConvertor(Convertor):
                 return i, i+size_ngram-1
         return None, None
 
-    def find_likely_answer(self, paragraph, answer1, answer2, max_n=20):
+    def find_likely_answer(self, paragraph, answer1, answer2=None, max_n=20):
         """
         Knowing an answer, find spans in the paragraphs with high rouge score
         max_n is the biggest n-gram analyzed
         """
+        answer2 = answer1 if answer2==None else answer2
         answers = []
         for metric, threshold in zip(self.metrics, self.metrics_thresholds):
             previous_max_score, max_score = 0, 0
@@ -242,35 +243,38 @@ def main():
 
     args = parser.parse_args()
 
-    print(args.with_answer)
-    print(args.summary)
-    print(args.max_rank)
+    print("with answer: ",args.with_answer)
+    print("summary: ",args.summary)
+    print("max rank: ",args.max_rank)
 
     metrics = [Rouge, Bleu, Cosine]
     thresholds = [eval(t) for t in args.thresholds.split(",")]
-
-    ranking_files = args.ranking_files.split(", ")
-    print(ranking_files)
-
-    ranking = merge_ranks(
-        convert_rank_in_dic(ranking_files, args.max_rank))
-    print("Created ranking dic")
-
     dataset = convert_docs_in_dic(args.chunked_stories)
     print("Created dataset")
 
-    convertor = MinConvertor(args.output_file,
+    if not  args.summary:
+        ranking_files = args.ranking_files.split(", ")
+        print(ranking_files)
+        ranking = merge_ranks(
+            convert_rank_in_dic(ranking_files, args.max_rank))
+        print("Created ranking dic")
+        convertor = MinConvertor(args.output_file,
                              dataset,
                              ranking,
                              metrics,
                              thresholds
                              )
-    if not args.summary:
         convertor.find_and_convert(just_book=False,
                                    train_dev_test=args.sets, 
                                    with_answer=args.with_answer,
                                    n_split=args.n_split)
     else:
+        convertor = MinConvertor(args.output_file,
+                             dataset,
+                             None,
+                             metrics,
+                             thresholds
+                             )
         convertor.find_and_convert_from_summaries(train_dev_test=args.sets,
                                                   with_answer=args.with_answer, 
                                                   n_split=args.n_split)
