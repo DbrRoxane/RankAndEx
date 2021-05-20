@@ -104,20 +104,21 @@ def convert_rank_in_dic(ranking_files, max_rank=3):
         with open(ranking_filename, 'r') as ranking_file:
             ranking_reader = csv.reader(ranking_file, delimiter="\t")
             for row in ranking_reader:
-                assert(row[0].split("_")[0] == row[1].split("_")[0])
-                if row[0] not in ranking_dic.keys():
-                    ranking_dic[row[0]] = {}
-                if ranking_filename not in ranking_dic[row[0]].keys():
-                    ranking_dic[row[0]][ranking_filename] = []
-                if eval(row[2]) < max_rank:
-                    ranking_dic[row[0]][ranking_filename].append(row[1])
+                if row[0].split("_")[0] == row[1].split("_")[0]:
+                #assert(row[0].split("_")[0] == row[1].split("_")[0])
+                    if row[0] not in ranking_dic.keys():
+                        ranking_dic[row[0]] = {}
+                    if ranking_filename not in ranking_dic[row[0]].keys():
+                        ranking_dic[row[0]][ranking_filename] = []
+                    if eval(row[2]) < max_rank:
+                        ranking_dic[row[0]][ranking_filename].append(row[1])
     return ranking_dic
 
 def merge_ranks(ranking_dic):
     ok, notok = 0,0
     rank_merged = dict()
     for query_id, ranks in ranking_dic.items():
-        assert(len(ranks.keys())==2)
+        #assert(len(ranks.keys())==2)
         merged_list = [par for groupped_rank in zip(*list(ranks.values()))
                        for par in groupped_rank]
         set_merged_list  = []

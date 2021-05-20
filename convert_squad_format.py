@@ -211,13 +211,13 @@ def main():
         "--ranking_files", default="./data/ranking/bm25_with_answer.tsv, ./data/ranking/tfidf_with_answer.tsv, ./data/ranking/nqa_predictions_with_answer0.tsv, ./data/ranking/nqa_predictions_with_answer1.tsv, ./data/ranking/nqa_predictions_with_answer2.tsv, ./data/ranking/nqa_predictions_with_answer3.tsv, ./data/ranking/nqa_predictions_with_answer4.tsv, ./data/ranking/nqa_predictions_with_answer5.tsv, ./data/ranking/nqa_predictions_with_answer6.tsv, ./data/ranking/nqa_predictions_with_answer7.tsv, ./data/ranking/nqa_predictions_with_answer8.tsv", \
         type=str, help="Paths of the ranking predictions files")
 
-#    parser.add_argument(
-#        "--metrics", default="Rouge,Bleu", \
-#        type=str, help="Metrics for weak labelisation")
+    parser.add_argument(
+        "--metrics", default="Rouge,Bleu", \
+        type=str, help="Metrics for weak labelisation")
 
 
     parser.add_argument(
-        "--thresholds", default="0.6,0.5,0.7", \
+        "--thresholds", default="0.6,0.5", \
         type=str, help="Weak labelisation threshold")
 
     parser.add_argument(
@@ -247,7 +247,7 @@ def main():
     print("summary: ",args.summary)
     print("max rank: ",args.max_rank)
 
-    metrics = [Rouge, Bleu, Cosine]
+    metrics = [Rouge, Bleu]
     thresholds = [eval(t) for t in args.thresholds.split(",")]
     dataset = convert_docs_in_dic(args.chunked_stories)
     print("Created dataset")
