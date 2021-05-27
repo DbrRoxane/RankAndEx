@@ -187,4 +187,4 @@ if __name__=="__main__":
     out_train = "../../data/hardem_format/msmarco_train_indent.json"
     out_dev = "../../data/hardem_format/msmarco_dev.json"
     msmarco2min(train_msmarco_loc, out_train, tokenizer)
-    msmarco2min(dev_msmarco_loc, out_dev, tokenizer)
+    #msmarco2min(dev_msmarco_loc, out_dev, tokenizer)

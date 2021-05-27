@@ -20,7 +20,7 @@ class Rouge(Metric):
 
         ngrams_join = [" ".join(ngram) for ngram in ngrams]
         ngrams_join = [ngram for ngram in ngrams_join if ngram != "."]
-        if not ngrams_join :
+        if not answer1 or ngrams_join==[] :
             return [0,0]
         scores_a1 = rouge.get_scores(ngrams_join, [answer1]*len(ngrams_join))
         scores_a2 = rouge.get_scores(ngrams_join, [answer2]*len(ngrams_join))
