@@ -7,7 +7,7 @@ from similarity_metrics import Rouge, Bleu, Cosine
 import tokenization
 from convert_squad_format import MinConvertor
 
-def coqa2min(inp, out, tokenizer):
+def coqa2min(inp, out, tokenizer, test=False):
     with open(inp) as f:
         list_input_data = json.load(f)["data"]
     output_data = []
@@ -20,8 +20,10 @@ def coqa2min(inp, out, tokenizer):
                 if not answer["span_text"].strip() : 
                     continue
                 span_start = len(tokenizer.tokenize(story["story"][:answer["span_start"]].strip()))
+                span_start = span_start if span_start < len(context[0]) else len(context[0])-1 
                 span_end = span_start + len(tokenizer.tokenize(answer["span_text"].strip()))
-                a = [[{"text":answer["span_text"], "word_start":span_start, "word_end":span_end}]]
+                span_end = span_end if span_end < len(context[0]) else len(context[0])-1
+                a = [[{"text":" ".join(context[0][span_start:span_end]), "word_start":span_start, "word_end":span_end}]]
                 final = [answer["input_text"]]
                 json.dump({"id":index,
                            "question":q,
@@ -30,6 +32,12 @@ def coqa2min(inp, out, tokenizer):
                            "final_answers":final},
                          f)
                 f.write("\n")
+                if not test: 
+                    for c in context:
+                        c += ["; "] + tokenizer.tokenize(q)
+                        finals_tokenized = [tokenizer.tokenize(fi) for fi in final]
+                        for fi in finals_tokenized:
+                            c += ["; "] + fi
 
 def squad2min(inp, out, tokenizer):
     with open(inp) as f:
@@ -39,9 +47,9 @@ def squad2min(inp, out, tokenizer):
         for story in list_input_data:
             context = [tokenizer.tokenize(paragraph["context"]) for paragraph in story["paragraphs"]]
             for i, paragraph in enumerate(story["paragraphs"]):
-                a = [[] for j in story["paragraphs"]]
-                final = []
                 for qa in paragraph["qas"]:
+                    a = [[] for j in story["paragraphs"]]
+                    final = []
                     index = qa["id"]
                     q = qa["question"]
                     answers = qa["answers"]
@@ -90,7 +98,20 @@ def race2min(data_path, out, tokenizer):
                          write_file)
                 write_file.write("\n")
 
-
+def race2qasc(data_path, out, tokenizer):
+    import glob
+    input_files = glob.glob(data_path+"/high/*") + glob.glob(data_path+"/middle/*")
+    with open(out, "w") as write_file:
+        for filename in input_files:
+            with open(filename) as f:
+                story = json.load()
+                context = [tokenizer.tokenize(story["article"])]
+                index = story["id"]
+                for question, options, answer in zip(story["questions"], story["options"], story["answers"]):
+                    q = question
+                    final = [options[dic_opt[answer]]]
+                    
+                    
 def wikihop2min(inp, out, tokenizer):
     convertor = MinConvertor(converted_filename=None, 
                              dataset=None,
@@ -130,7 +151,7 @@ def msmarco2min(inp, out, tokenizer):
             index = list_input_data["query_id"][idx]
             q= list_input_data["query"][idx]
             final = list_input_data["wellFormedAnswers"][idx] \
-                    if list_input_data["wellFormedAnswers"][idx] \
+                    if len(list_input_data["wellFormedAnswers"][idx])>0 \
                     else list_input_data["answers"][idx]
             answer1 = list_input_data["answers"][idx][0]
             if len(list_input_data["answers"][idx])<1:
@@ -151,11 +172,11 @@ if __name__=="__main__":
 
     print("COQA starts")
     train_coqa_loc = "../../data/coqa/coqa-train-v1.0.json"
-    dev_coqa_loc = "../../data/coqa/coqa-train-v1.0.json"
-    out_train = "../../data/hardem_format/coqa_train.json"
-    out_dev = "../../data/hardem_format/coqa_dev.json"
-    #coqa2min(train_coqa_loc, out_train, tokenizer)
-    #coqa2min(dev_coqa_loc, out_dev, tokenizer)
+    dev_coqa_loc = "../../data/coqa/coqa-dev-v1.0.json"
+    out_train = "../../data/hardem_format/coqa_train2.json"
+    out_dev = "../../data/hardem_format/coqa_dev2.json"
+    coqa2min(train_coqa_loc, out_train, tokenizer)
+    coqa2min(dev_coqa_loc, out_dev, tokenizer)
 
     print("SQUAD starts")
     train_squad_loc = "../../data/Squad/train-v2.0.json"
@@ -186,5 +207,5 @@ if __name__=="__main__":
     dev_msmarco_loc = "../../data/msmarco/dev_v2.1.json"
     out_train = "../../data/hardem_format/msmarco_train_indent.json"
     out_dev = "../../data/hardem_format/msmarco_dev.json"
-    msmarco2min(train_msmarco_loc, out_train, tokenizer)
+    #msmarco2min(train_msmarco_loc, out_train, tokenizer)
     #msmarco2min(dev_msmarco_loc, out_dev, tokenizer)

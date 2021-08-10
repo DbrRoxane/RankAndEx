@@ -204,11 +204,11 @@ def main():
         type=str, help="Path for the chunked stories")
 
     parser.add_argument(
-        "--output_file", default="./data/processed/nqa_squadformat.json", \
+        "--output_file", default="./data/processed/nqa_dev_without.json", \
         type=str, help="Path for the generated dataset")
 
     parser.add_argument(
-        "--ranking_files", default="./data/ranking/bm25_with_answer.tsv, ./data/ranking/tfidf_with_answer.tsv, ./data/ranking/nqa_predictions_with_answer0.tsv, ./data/ranking/nqa_predictions_with_answer1.tsv, ./data/ranking/nqa_predictions_with_answer2.tsv, ./data/ranking/nqa_predictions_with_answer3.tsv, ./data/ranking/nqa_predictions_with_answer4.tsv, ./data/ranking/nqa_predictions_with_answer5.tsv, ./data/ranking/nqa_predictions_with_answer6.tsv, ./data/ranking/nqa_predictions_with_answer7.tsv, ./data/ranking/nqa_predictions_with_answer8.tsv", \
+        "--ranking_files", default="./data/ranking/bm25_without_answer.tsv, ./data/ranking/nqa_predictions_without_answer0.tsv, ./data/ranking/nqa_predictions_without_answer1.tsv, ./data/ranking/nqa_predictions_without_answer2.tsv, ./data/ranking/nqa_predictions_without_answer3.tsv, ./data/ranking/nqa_predictions_without_answer4.tsv, ./data/ranking/nqa_predictions_without_answer5.tsv, ./data/ranking/nqa_predictions_without_answer6.tsv, ./data/ranking/nqa_predictions_without_answer7.tsv, ./data/ranking/nqa_predictions_without_answer8.tsv", \
         type=str, help="Paths of the ranking predictions files")
 
     parser.add_argument(
